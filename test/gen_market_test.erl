@@ -14,6 +14,28 @@ make_reservation_test_() ->
        fun sell_reservation_accepted/0,
        fun buy_reservation_accepted/0]}}.
 
+clear_market_test_() ->
+    {setup, fun start_market/0, fun stop_market/1,
+     [fun clear_market/0]}.
+
+clear_market() ->
+    open_market(),
+    start_accepting_reservations(),
+    {ok, SellRef} = sell_reservation_accepted(),
+    {ok, BuyRef} = buy_reservation_accepted(),
+    start_accepting_offers(),
+    gen_market:join(?MARKET),
+    offer_accepted = gen_market:make_offer(?MARKET, SellRef, {10, 100}),
+    offer_accepted = gen_market:make_offer(?MARKET, BuyRef, {100, 10}),
+    receive
+        {gen_market, {market_cleared, _Price}} ->
+            ok;
+        _ ->
+            error(unexpected_message)
+    after 100 ->
+            error(didnt_receive_notification)
+    end.
+
 start_market() ->
     {ok, Pid} = gen_market:start_link(?MARKET, []),
     Pid.
@@ -30,6 +52,9 @@ open_market() ->
 
 start_accepting_reservations() ->
     gen_market:accept_reservations(?MARKET).
+
+start_accepting_offers() ->
+    gen_market:accept_offers(?MARKET).
 
 sell_reservation_accepted() ->
     {ok, _Ref} = gen_market:make_reservation(?MARKET, seller).
