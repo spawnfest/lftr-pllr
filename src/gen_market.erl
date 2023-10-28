@@ -106,7 +106,7 @@ handle_event({call, From}, {make_offer, Id, Offer}, {accepting_offers, {Buyers, 
             case clear_market(NewData#data.buy_offers, NewData#data.sell_offers) of
                 {ok, MCP} ->
                     notify(Data#data.subscribers, {market_cleared, MCP}),
-                    {next_state, {marked_done, cleared}, NewData#data{mcp = MCP}};
+                    {next_state, {market_done, cleared}, NewData#data{mcp = MCP}};
                 {error, Reason} ->
                     notify(Data#data.subscribers, market_failed),
                     {next_state, {market_done, {error, Reason}}, NewData}
