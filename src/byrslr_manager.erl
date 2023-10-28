@@ -21,9 +21,9 @@ init({}) ->
 
 handle_call({new_market, Id, _Options}, _From, #state{markets = Markets} = State)
   when is_map_key(Id, Markets) ->
-    {reply, {error, already_started}, State};
+    {reply, {error, market_exists}, State};
 handle_call({new_market, Id, Options}, _From, #state{markets = Markets, monitors = Monitors} = State) ->
-    {ok, MarketPid} = start_market(Id, Options),
+    {ok, MarketPid} = market_sup:new_market(Id, Options),
     Ref = monitor(process, MarketPid),
     {reply, {ok, MarketPid}, State#state{markets = Markets#{Id => MarketPid},
                                          monitors = Monitors#{Ref => Id}}};
@@ -38,9 +38,3 @@ handle_info({'DOWN', Ref, process, _, _}, State) ->
     NewMonitors = maps:remove(Ref, State#state.monitors),
     NewMarkets = maps:remove(Id, State#state.markets),
     {noreply, State#state{markets = NewMarkets, monitors = NewMonitors}}.
-
-start_market(Id, Options) ->
-    {ok, MarketPid} = market_sup:start_market(Id, Options).
-    %% TODO handle periodic markets by starting a market director.
-    %% case proplists:get(market_period, Options, nil) of
-    %%     nil ->

@@ -2,7 +2,7 @@
 
 -behaviour(supervisor).
 
--export([start_link/0, start_market/2]).
+-export([start_link/0, new_market/2]).
 
 -export([init/1]).
 
@@ -11,7 +11,7 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_market(Id, Options) ->
+new_market(Id, Options) ->
     supervisor:start_child(?SERVER, [Id, Options]).
 
 %% sup_flags() = #{strategy => strategy(),         % optional
