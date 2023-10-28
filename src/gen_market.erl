@@ -2,7 +2,8 @@
 
 -behaviour(gen_statem).
 
--export([start_link/2, open_market/1, accept_reservations/1, accept_offers/1, join/1]).
+-export([start_link/2, open_market/1, accept_reservations/1, accept_offers/1, join/1,
+         make_reservation/3, make_offer/3]).
 -export([callback_mode/0, init/1, handle_event/4]).
 
 -record(data, {periodic = nil :: nil | #{},
@@ -25,6 +26,12 @@ accept_offers(Market) ->
 
 join(Market) ->
     gen_statem:cast(Market, {subscribe, self()}).
+
+make_reservation(MarketId, ByrSlr, Id) ->
+    gen_statem:call(MarketId, {make_reservation, ByrSlr, Id}).
+
+make_offer(MarketId, Id, Offer) ->
+    gen_statem:call(MarketId, {make_offer, Id, Offer}).
 
 start_link(Id, Options) ->
     gen_statem:start_link({local, Id}, ?MODULE, Options, []).
