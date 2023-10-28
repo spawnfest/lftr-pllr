@@ -3,7 +3,7 @@
 -behaviour(gen_statem).
 
 -export([start_link/2, open_market/1, accept_reservations/1, accept_offers/1, join/1,
-         make_reservation/3, make_offer/3]).
+         make_reservation/2, make_offer/3]).
 -export([callback_mode/0, init/1, handle_event/4]).
 
 -record(data, {periodic = nil :: nil | #{},
@@ -27,8 +27,8 @@ accept_offers(Market) ->
 join(Market) ->
     gen_statem:cast(Market, {subscribe, self()}).
 
-make_reservation(MarketId, ByrSlr, Id) ->
-    gen_statem:call(MarketId, {make_reservation, ByrSlr, Id}).
+make_reservation(MarketId, ByrSlr) ->
+    gen_statem:call(MarketId, {make_reservation, ByrSlr}).
 
 make_offer(MarketId, Id, Offer) ->
     gen_statem:call(MarketId, {make_offer, Id, Offer}).
@@ -76,10 +76,12 @@ handle_event(cast, accept_offers, {accepting_reservations, {BuyResv, SellResv}},
 handle_event(cast, accept_offers, {accepting_reservations, _}, Data) ->
     notify(Data#data.subscribers, market_error),
     {next_state, {market_done, {error, not_formed}}, Data};
-handle_event({call, From}, {make_reservation, buyer, Id}, {accepting_reservations, {BuyResv, SellResv}}, Data) ->
-    {next_state, {accepting_reservations, {[Id|BuyResv], SellResv}}, Data, [{reply, From, reservation_accepted}]};
-handle_event({call, From}, {make_reservation, seller, Id}, {accepting_reservations, {BuyResv, SellResv}}, Data) ->
-    {next_state, {accepting_reservations, {BuyResv, [Id|SellResv]}}, [{reply, From, reservation_accepted}]};
+handle_event({call, From}, {make_reservation, buyer}, {accepting_reservations, {BuyResv, SellResv}}, Data) ->
+    ReservationId = erlang:make_ref(),
+    {next_state, {accepting_reservations, {[ReservationId|BuyResv], SellResv}}, Data, [{reply, From, {ok, ReservationId}}]};
+handle_event({call, From}, {make_reservation, seller}, {accepting_reservations, {BuyResv, SellResv}}, Data) ->
+    ReservationId = erlang:make_ref(),
+    {next_state, {accepting_reservations, {BuyResv, [ReservationId|SellResv]}}, Data, [{reply, From, {ok, ReservationId}}]};
 
 handle_event({call, From}, {make_offer, Id, Offer}, {accepting_offers, {Buyers, Sellers}}, Data) ->
     case {lists:member(Id, Buyers), lists:member(Id, Sellers)} of
@@ -133,7 +135,7 @@ handle_event(cast, open_market, State, Data) ->
                                  reservation_delay = ReservationDelayTimer}};
 
 handle_event({call, From}, {make_reservation, _, _}, _, _) ->
-    {keep_state_and_data, [{reply, From, reservation_rejected}]};
+    {keep_state_and_data, [{reply, From, {error, rejected}}]};
 handle_event({call, From}, {make_offer, _, _}, _, _) ->
     {keep_state_and_data, [{reply, From, offer_rejected}]};
 
