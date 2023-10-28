@@ -11,6 +11,7 @@
                offer_delay :: undefined | timer:tref(),
                buy_offers = [] :: [any()],
                sell_offers = [] :: [any()],
+               market_participants = [] :: [pid()],
                mcp :: any()}).
 
 open_market(Market) ->
@@ -61,9 +62,13 @@ handle_event(cast, accept_offers, {accepting_reservations, {BuyResv, SellResv}},
 handle_event(cast, accept_offers, {accepting_reservations, _}, Data) ->
     {next_state, {market_done, {error, not_formed}}, Data};
 handle_event({call, From}, {make_reservation, buyer, Id}, {accepting_reservations, {BuyResv, SellResv}}, Data) ->
-    {next_state, {accepting_reservations, {[Id|BuyResv], SellResv}}, Data, [{reply, From, reservation_accepted}]};
+    {next_state, {accepting_reservations, {[Id|BuyResv], SellResv}},
+     Data#data{market_participants = [Id|Data#data.market_participants]},
+     [{reply, From, reservation_accepted}]};
 handle_event({call, From}, {make_reservation, seller, Id}, {accepting_reservations, {BuyResv, SellResv}}, Data) ->
-    {next_state, {accepting_reservations, {BuyResv, [Id|SellResv]}}, Data, [{reply, From, reservation_accepted}]};
+    {next_state, {accepting_reservations, {BuyResv, [Id|SellResv]}},
+     Data#data{market_participants = [Id|Data#data.market_participants]},
+     [{reply, From, reservation_accepted}]};
 
 handle_event({call, From}, {make_offer, Id, Offer}, {accepting_offers, {Buyers, Sellers}}, Data) ->
     case {lists:member(Id, Buyers), lists:member(Id, Sellers)} of
@@ -87,8 +92,10 @@ handle_event({call, From}, {make_offer, Id, Offer}, {accepting_offers, {Buyers, 
     if RemainingReservations =:= 0 ->
             case clear_market(NewData#data.buy_offers, NewData#data.sell_offers) of
                 {ok, MCP} ->
+                    notify(Data#data.market_participants, {market_cleared, MCP}),
                     {next_state, {marked_done, cleared}, NewData#data{mcp = MCP}};
                 {error, Reason} ->
+                    notify(Data#data.market_participants, market_failed),
                     {next_state, {market_done, {error, Reason}}, NewData}
             end;
        RemainingReservations > 0 ->
@@ -99,14 +106,17 @@ handle_event(cast, open_market, {market_done, _}, Data) ->
     {ReservationDelayTimer, OfferDelayTimer} = start_timers(Data#data.periodic),
     {next_state, open, Data#data{buy_offers = [],
                                  sell_offers = [],
+                                 market_participants = [],
                                  mcp = undefined,
                                  offer_delay = OfferDelayTimer,
                                  reservation_delay = ReservationDelayTimer}};
 handle_event(cast, open_market, State, Data) ->
     logger:error("market failed to clear in alloted time~nState = ~p", [State]),
+    notify(Data#data.market_participants, market_failed),
     {ReservationDelayTimer, OfferDelayTimer} = start_timers(Data#data.periodic),
     {next_state, open, Data#data{buy_offers = [],
                                  sell_offers = [],
+                                 market_participants = [],
                                  mcp = undefined,
                                  offer_delay = OfferDelayTimer,
                                  reservation_delay = ReservationDelayTimer}};
@@ -124,6 +134,9 @@ add_sell_offer(#data{sell_offers = SellOffers} = Data, Offer) ->
 clear_market(BuyOffers, SellOffers) ->
     %% TODO Implement a market clearing algorithm.
     {ok, 0.0}.
+
+notify(Pids, Msg) ->
+    [Pid ! {gen_market, Msg} || Pid <- Pids].
 
 start_timers(#{reservation_delay := ReservationDelay,
                offer_delay := OfferDelay}) ->
