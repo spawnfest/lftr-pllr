@@ -134,7 +134,7 @@ handle_event(cast, open_market, State, Data) ->
                                  offer_delay = OfferDelayTimer,
                                  reservation_delay = ReservationDelayTimer}};
 
-handle_event({call, From}, {make_reservation, _, _}, _, _) ->
+handle_event({call, From}, {make_reservation, _}, _, _) ->
     {keep_state_and_data, [{reply, From, {error, rejected}}]};
 handle_event({call, From}, {make_offer, _, _}, _, _) ->
     {keep_state_and_data, [{reply, From, offer_rejected}]};
