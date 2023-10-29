@@ -2,8 +2,6 @@
 
 -behaviour(gen_market).
 
--include_lib("eunit/include/eunit.hrl").
-
 -export([clear/2]).
 
 clear(BuyOffers, SellOffers) ->
@@ -21,7 +19,6 @@ clear(BuyOffers, SellOffers) ->
 
 intersection([{_, ZD}|_]=Demand, [{_, ZS}|_]=Supply) ->
     if ZD < ZS ->
-            ?debugHere,
             no_intersection;
        true ->
             find_intersection(Demand, Supply, Supply, 0)
