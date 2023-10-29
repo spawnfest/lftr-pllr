@@ -14,9 +14,11 @@
                sell_offers = [] :: [any()],
                subscribers = [] :: [pid()],
                market_impl :: module(),
+               market_data :: any(),
                mcp :: any()}).
 
--callback clear(BuyOffers :: [any()], SellOffers :: [any()]) -> {ok, MCP :: any()} | {erorr, Reason :: any()}.
+-callback clear(BuyOffers :: [any()], SellOffers :: [any()], Data :: any()) ->
+    {ok, MCP :: any()} | {erorr, Reason :: any()}.
 
 open_market(Market) ->
     gen_statem:cast(Market, open_market).
@@ -42,7 +44,8 @@ start_link(Id, Options) ->
 init(Options) ->
     Periodic = periodic_options(Options),
     MarketImpl = proplists:get_value(market_impl, Options, byrslr_basic_market),
-    {ok, closed, #data{periodic = Periodic, market_impl = MarketImpl}}.
+    MarketData = proplists:get_value(market_data, Options, []),
+    {ok, closed, #data{periodic = Periodic, market_impl = MarketImpl, market_data = MarketData}}.
 
 periodic_options(Options) ->
     case proplists:get_value(market_period, Options, nil) of
@@ -108,7 +111,10 @@ handle_event({call, From}, {make_offer, Id, Offer}, {accepting_offers, {Buyers, 
     end,
     RemainingReservations = length(NewSellers) + length(NewBuyers),
     if RemainingReservations =:= 0 ->
-            case MarketImpl:clear(NewData#data.buy_offers, NewData#data.sell_offers) of
+            case MarketImpl:clear(NewData#data.buy_offers,
+                                  NewData#data.sell_offers,
+                                  NewData#data.market_data)
+            of
                 {ok, MCP} ->
                     notify(Data#data.subscribers, {market_cleared, MCP}),
                     {next_state, {market_done, cleared}, NewData#data{mcp = MCP}};

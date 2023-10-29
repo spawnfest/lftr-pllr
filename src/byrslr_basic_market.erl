@@ -2,9 +2,9 @@
 
 -behaviour(gen_market).
 
--export([clear/2]).
+-export([clear/3]).
 
-clear(BuyOffers, SellOffers) ->
+clear(BuyOffers, SellOffers, _Data) ->
     OrderedSellers = lists:keysort(2, SellOffers),
     OrderedBuyers = lists:reverse(lists:keysort(2, BuyOffers)),
     %% 1. Find the intersection of the ordered buyers & sellers
