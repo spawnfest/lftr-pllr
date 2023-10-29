@@ -13,7 +13,10 @@
                buy_offers = [] :: [any()],
                sell_offers = [] :: [any()],
                subscribers = [] :: [pid()],
+               market_impl :: module(),
                mcp :: any()}).
+
+-callback clear(BuyOffers :: [any()], SellOffers :: [any()]) -> {ok, MCP :: any()} | {erorr, Reason :: any()}.
 
 open_market(Market) ->
     gen_statem:cast(Market, open_market).
@@ -38,7 +41,8 @@ start_link(Id, Options) ->
 
 init(Options) ->
     Periodic = periodic_options(Options),
-    {ok, closed, #data{periodic = Periodic}}.
+    MarketImpl = proplists:get_value(market_impl, Options, byrslr_basic_market),
+    {ok, closed, #data{periodic = Periodic, market_impl = MarketImpl}}.
 
 periodic_options(Options) ->
     case proplists:get_value(market_period, Options, nil) of
@@ -83,7 +87,8 @@ handle_event({call, From}, {make_reservation, seller}, {accepting_reservations, 
     ReservationId = erlang:make_ref(),
     {next_state, {accepting_reservations, {BuyResv, [ReservationId|SellResv]}}, Data, [{reply, From, {ok, ReservationId}}]};
 
-handle_event({call, From}, {make_offer, Id, Offer}, {accepting_offers, {Buyers, Sellers}}, Data) ->
+handle_event({call, From}, {make_offer, Id, Offer}, {accepting_offers, {Buyers, Sellers}},
+             #data{market_impl = MarketImpl} = Data) ->
     case {lists:member(Id, Buyers), lists:member(Id, Sellers)} of
         {true, _} ->
             gen_statem:reply(From, offer_accepted),
@@ -103,7 +108,7 @@ handle_event({call, From}, {make_offer, Id, Offer}, {accepting_offers, {Buyers, 
     end,
     RemainingReservations = length(NewSellers) + length(NewBuyers),
     if RemainingReservations =:= 0 ->
-            case clear_market(NewData#data.buy_offers, NewData#data.sell_offers) of
+            case MarketImpl:clear(NewData#data.buy_offers, NewData#data.sell_offers) of
                 {ok, MCP} ->
                     notify(Data#data.subscribers, {market_cleared, MCP}),
                     {next_state, {market_done, cleared}, NewData#data{mcp = MCP}};
@@ -147,9 +152,6 @@ add_buy_offer(#data{buy_offers = BuyOffers} = Data, Offer) ->
 add_sell_offer(#data{sell_offers = SellOffers} = Data, Offer) ->
     Data#data{sell_offers = [Offer|SellOffers]}.
 
-clear_market(BuyOffers, SellOffers) ->
-    %% TODO Implement a market clearing algorithm.
-    {ok, 0.0}.
 
 notify(Pids, Msg) ->
     [Pid ! {gen_market, Msg} || Pid <- Pids].

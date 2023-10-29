@@ -25,8 +25,8 @@ clear_market() ->
     {ok, BuyRef} = buy_reservation_accepted(),
     start_accepting_offers(),
     gen_market:join(?MARKET),
-    offer_accepted = gen_market:make_offer(?MARKET, SellRef, {10, 100}),
-    offer_accepted = gen_market:make_offer(?MARKET, BuyRef, {100, 10}),
+    offer_accepted = gen_market:make_offer(?MARKET, SellRef, {10, 10}),
+    offer_accepted = gen_market:make_offer(?MARKET, BuyRef, {100, 100}),
     receive
         {gen_market, {market_cleared, _Price}} ->
             ok;
