@@ -49,6 +49,14 @@ can specify that `bar` should be used to clear the market like so:
 byrslr:new_market(foo, [{market_impl, bar}]).
 ```
 
+Optionally, extra data can be provided that will be passed to the
+`clear` callback along with the lists of buy and sell offers.
+
+```erlang
+byrslr:new_market(foo, [{market_impl, bar},
+    {market_data, #{import_tariff => 1000, export_tariff => 800}}]).
+```
+
 ### Subscribe to market events
 
 To subscribe to be notified when market events occur (e.g. starting to
