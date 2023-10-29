@@ -17,7 +17,7 @@ many concurrent markets as you want.
 To Do
 -----
 
-- [ ] implement the default market clearing algorithm.
+- [x] implement the default market clearing algorithm.
 - [ ] store market bids and clearing prices in mnesia
 - [ ] configure as a distributed application and leverage mnesia for
       replication and failover
