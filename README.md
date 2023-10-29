@@ -1,5 +1,4 @@
-byrslr
-=====
+# ByrSlr
 
 An application for running double auction markets with customizable
 auction clearing mechanisms.
@@ -14,15 +13,37 @@ The application supports periodic markets that restart at a fixed
 interval, as well as purely event-driven markets. You can also run as
 many concurrent markets as you want.
 
-To Do
------
+The architecture of the market is inspired by the market agent in
+[VOLTTRON](https://github.com/VOLTTRON/volttron).
 
-- [x] implement the default market clearing algorithm.
-- [ ] store market bids and clearing prices in mnesia
-- [ ] configure as a distributed application and leverage mnesia for
-      replication and failover
+## Examples
 
-Build
------
+### Creating an event driven market
+
+To create an event-driven market with the default double-auction
+clearing algorithm:
+
+```erlang
+byrslr:new_market(foo, []).
+```
+### Creating a periodic market
+
+A market with a 5 minute cycle and a 120 second delay before accepting
+offers.
+
+```erlang
+byrslr:new_market(foo, [{market_period, 300000}, {reservation_delay, 0}, {offer_delay, 120000}]).
+```
+
+### Using a custom clearing algorithm
+
+Assuming the module `bar` implements the `gen_market` behavior, you
+can specify that `bar` should be used to clear the market like so:
+
+```erlang
+byrslr:new_market(foo, [{market_impl, bar}]).
+```
+
+## Build
 
     $ rebar3 compile
