@@ -14,7 +14,12 @@ interval, as well as purely event-driven markets. You can also run as
 many concurrent markets as you want.
 
 The architecture of the market is inspired by the market agent in
-[VOLTTRON](https://github.com/VOLTTRON/volttron).
+[VOLTTRON](https://github.com/VOLTTRON/volttron). Before making either
+a buy or a sell offer, market participants must declare their intent
+by making a buy/sell reservation. Reservations are assigned a unique
+Id that must be used when making an offer. Once offers are received
+corresponding to every reservation the market is automatically
+cleared.
 
 ## Examples
 
@@ -42,6 +47,32 @@ can specify that `bar` should be used to clear the market like so:
 
 ```erlang
 byrslr:new_market(foo, [{market_impl, bar}]).
+```
+
+### Subscribe to market events
+
+To subscribe to be notified when market events occur (e.g. starting to
+accept reservations/offers, cleared, opened) use
+
+```erlang
+byrslr:join_market(foo).
+```
+
+Once subscribed the calling process will receive messages of the form
+`{gen_market, Event}`.
+
+### Driving an event-driven market
+
+For event-driven markets use the following functions to trigger events
+that drive the market.
+
+```erlang
+%% open the market, clearing previous bids and offers and starting a new bidding round
+byrslr:start_new_cycle(foo).
+
+%% these are pretty self-explanatory
+byrslr:start_accepting_reservations(foo).
+byrslr:start_accepting_offers(foo).
 ```
 
 ## Build
